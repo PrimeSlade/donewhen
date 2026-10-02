@@ -1,0 +1,47 @@
+# DoneWhen on Dokploy (Compose service, GitHub provider, compose path: ./dokploy-compose.yml).
+# TLS + routing come from Dokploy's Traefik: add a domain in the Domains tab
+# pointing at service "donewhen", port 8080, HTTPS on.
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-donewhen}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-donewhen}
+    volumes:
+      # Named volume: survives redeploys (bind mounts in the repo dir do not).
+      - donewhen-pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-donewhen}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  donewhen:
+    # Builds this fork. To use the upstream prebuilt image instead:
+    # image: ghcr.io/johnreginald/donewhen:0.1.0
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8080"
+    environment:
+      DONEWHEN_DATABASE_URL: postgres://${POSTGRES_USER:-donewhen}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-donewhen}?sslmode=disable
+      DONEWHEN_BASE_URL: ${DONEWHEN_BASE_URL:?set DONEWHEN_BASE_URL to https://your.domain}
+      DONEWHEN_LISTEN_ADDR: ":8080"
+      DONEWHEN_ENV: prod
+      DONEWHEN_SESSION_SECRET: ${DONEWHEN_SESSION_SECRET:?set DONEWHEN_SESSION_SECRET (openssl rand -hex 32)}
+      DONEWHEN_ISSUE_PREFIX: ${DONEWHEN_ISSUE_PREFIX:-R}
+      # Traefik appends the client IP to X-Forwarded-For.
+      DONEWHEN_TRUSTED_PROXY_HEADER: X-Forwarded-For
+      DONEWHEN_VAPID_PUBLIC: ${DONEWHEN_VAPID_PUBLIC:-}
+      DONEWHEN_VAPID_PRIVATE: ${DONEWHEN_VAPID_PRIVATE:-}
+      DONEWHEN_VAPID_SUBJECT: ${DONEWHEN_VAPID_SUBJECT:-mailto:admin@localhost}
+      DONEWHEN_DEMO: ${DONEWHEN_DEMO:-}
+      DONEWHEN_BACKUP_CONFIRMED: ${DONEWHEN_BACKUP_CONFIRMED:-}
+    restart: unless-stopped
+
+volumes:
+  donewhen-pg:
