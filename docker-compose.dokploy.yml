@@ -1,4 +1,4 @@
-# DoneWhen on Dokploy (Compose service, GitHub provider, compose path: ./dokploy-compose.yml).
+# DoneWhen on Dokploy (Compose service, GitHub provider, compose path: ./docker-compose.dokploy.yml).
 # TLS + routing come from Dokploy's Traefik: add a domain in the Domains tab
 # pointing at service "donewhen", port 8080, HTTPS on.
 services:
